@@ -7,12 +7,12 @@ const WHISPER_API_URL = 'https://api.openai.com/v1/audio/transcriptions';
 /**
  * Transcribes audio data using the OpenAI Whisper API.
  * @param {Buffer} audioBuffer The audio data as a Buffer.
- * @param {string} [filename='audio.webm'] The filename to use for the FormData.
+ * @param {string} [filename='audio.wav'] The filename to use for the FormData.
  *                                          Needs a valid extension for Whisper.
  * @returns {Promise<string>} The transcribed text.
  * @throws {Error} If the API call fails or returns an error.
  */
-async function transcribeAudio(audioBuffer, filename = 'audio.webm') {
+async function transcribeAudio(audioBuffer, filename = 'audio.wav') {
     if (!config.openaiApiKey) {
         throw new Error('OpenAI API key is not configured.');
     }
@@ -20,11 +20,11 @@ async function transcribeAudio(audioBuffer, filename = 'audio.webm') {
         throw new Error('Audio buffer is empty or invalid.');
     }
 
-    // Directly send the received buffer as webm to Whisper
+    // Directly send the received buffer as wav to Whisper
     const form = new FormData();
     form.append('file', audioBuffer, {
         filename: filename, // Whisper needs a filename with a valid extension
-        contentType: 'audio/webm',
+        contentType: 'audio/wav',
     });
     form.append('model', 'whisper-1');
     form.append('language', 'en'); // Prime for English speech detection

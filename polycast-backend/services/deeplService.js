@@ -33,7 +33,7 @@ const getTranslator = () => {
         translatorInstance = null;
         throw new Error(`Failed to initialize DeepL Translator: ${error.message}`);
     }
-};
+}; //stuff above this looks good
 
 /**
  * Translates a single sentence using the DeepL API.
@@ -48,7 +48,7 @@ async function translateSentence(text, targetLang, sourceLang = null) {
     if (!text || text.trim().length === 0) {
         console.warn('translateSentence called with empty text.');
         return '';
-    }
+    } 
 
     // Now get the translator instance
     const translator = getTranslator(); // Ensures translator is initialized

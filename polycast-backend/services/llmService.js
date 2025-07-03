@@ -1,6 +1,5 @@
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
 const config = require('../config/config');
-
 let genAI;
 let model;
 
@@ -128,7 +127,7 @@ async function translateTextBatch(text, targetLanguages) {
  * @returns {Promise<Object>} The definition object with Spanish definition and example.
  * @throws {Error} If initialization fails or API call fails.
  */
-async function getWordDefinition(word, context = '') {
+async function getWordDefinition(word, context = '') { //Might be faster to use a dictionary API
     initializeLLM(); // Ensure LLM is initialized
 
     if (!word || word.trim().length === 0) {
@@ -136,12 +135,12 @@ async function getWordDefinition(word, context = '') {
         return { definition: '', example: '' };
     }
 
-    const contextInfo = context ? 
-        `The word appears in this context: "${context}". Your definition and examples should be specific to how the word is used in this context.` : 
+    const contextInfo = context ?
+        `The word appears in this context: "${context}". Your definition and examples should be specific to how the word is used in this context.` :
         '';
 
-    const prompt = `You are creating dictionary entries for non-native English speakers who are learning English. 
-    
+    const prompt = `You are creating dictionary entries for non-native English speakers who are learning English.
+
 Your job is to explain the English word "${word}" in a simple, clear way that helps beginners understand it.
 
 ${contextInfo}
@@ -184,13 +183,13 @@ Only return the JSON object, nothing else.`;
         const response = result.response;
         const text = response.text().trim();
         console.log(`[LLM Service] Received definition response: "${text.substring(0, 100)}..."`);
-        
+
         // Extract JSON from response
         let parsedResponse = extractJsonFromText(text);
-        
+
         // Normalize the response format for backward compatibility
         parsedResponse = normalizeDefinitionFormat(parsedResponse);
-        
+
         return parsedResponse;
     } catch (error) {
         console.error('[LLM Service] Error during definition API call:', error);
@@ -204,18 +203,18 @@ function extractJsonFromText(text) {
         // Find JSON in the response (it might be wrapped in code blocks or not)
         let jsonMatch = text.match(/```(?:json)?([^`]*?)```/s);
         let jsonStr = jsonMatch ? jsonMatch[1].trim() : text;
-        
+
         // If still not JSON object, try to find anything that looks like JSON
         if (!jsonStr.startsWith('{') && !jsonStr.startsWith('[')) {
             jsonMatch = text.match(/(\{.*\})/s);
             jsonStr = jsonMatch ? jsonMatch[0] : text;
         }
-        
+
         // Try to parse the JSON
         return JSON.parse(jsonStr);
     } catch (e) {
         console.error('[LLM Service] Failed to parse JSON:', e);
-        
+
         // Last resort - try to extract just the JSON object
         const lastMatch = text.match(/\{[^]*\}/);
         if (lastMatch) {
@@ -243,7 +242,7 @@ function normalizeDefinitionFormat(response) {
             if (!response.example && response.definitions[0].example) {
                 response.example = response.definitions[0].example;
             }
-        } 
+        }
         // If we have the old format without definitions array, create one
         else if (response.definition && !response.definitions) {
             response.definitions = [{
@@ -251,7 +250,7 @@ function normalizeDefinitionFormat(response) {
                 example: response.example || ''
             }];
         }
-        
+
         return response;
     } catch (e) {
         console.error('[LLM Service] Error normalizing definition format:', e);

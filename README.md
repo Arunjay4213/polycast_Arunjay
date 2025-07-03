@@ -6,7 +6,7 @@ A comprehensive language learning application that combines real-time transcript
 **ALWAYS check this section when working on flashcards - the format is very specific!**
 
 **FRONT of Card:**
-1. English sentence with target word blanked out: "I will _____ into battle" 
+1. English sentence with target word blanked out: "I will _____ into battle"
 2. Full translation with target word highlighted: "我将**冲锋**进入战斗"
 3. "Click to reveal answer" hint
 
@@ -151,7 +151,6 @@ polycast-main/
     │   ├── whisperService.js   # Audio transcription
     │   ├── llmService.js       # AI text processing
     │   ├── redisService.js     # Session management
-    │   └── audioConvertService.js # Audio format handling
     ├── dictionary-data/        # Word definition JSON files
     └── config/                 # Environment configuration
 ```

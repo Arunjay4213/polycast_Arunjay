@@ -40,7 +40,7 @@ describe('Whisper Service - transcribeAudio', () => {
         const mockResponse = { data: { text: 'Hello world' } };
         axios.post.mockResolvedValue(mockResponse);
 
-        const transcription = await transcribeAudio(mockAudioBuffer, 'test.webm');
+        const transcription = await transcribeAudio(mockAudioBuffer, 'test.wav');
 
         expect(axios.post).toHaveBeenCalledTimes(1);
         expect(axios.post).toHaveBeenCalledWith(
