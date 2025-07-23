@@ -10,9 +10,34 @@ const hasRedisConfig = config.redisUrl;
 if (hasRedisConfig) {
     try {
         redis = new Redis(config.redisUrl);
-        console.log('[Redis] Successfully initialized Redis client');
+
+        // Add connection event handlers to properly handle async connection errors
+        redis.on('connect', () => {
+            console.log('[Redis] Successfully connected to Redis server');
+        });
+
+        redis.on('ready', () => {
+            console.log('[Redis] Redis client is ready to receive commands');
+        });
+
+        redis.on('error', (error) => {
+            console.error('[Redis] Connection error:', error);
+            // Don't set redis to null here as it might recover
+            // Just log the error and let the client handle reconnection
+        });
+
+        redis.on('close', () => {
+            console.warn('[Redis] Connection to Redis server closed');
+        });
+
+        redis.on('reconnecting', () => {
+            console.log('[Redis] Attempting to reconnect to Redis server');
+        });
+
+        console.log('[Redis] Redis client initialized, attempting connection...');
     } catch (error) {
         console.error('[Redis] Error initializing Redis client:', error);
+        redis = null;
     }
 } else {
     console.log('[Redis] No REDIS_URL configured. Running in memory-only mode (rooms won\'t persist across restarts).');
@@ -25,16 +50,25 @@ const ROOM_PREFIX = 'polycast:room:';
 const ROOM_EXPIRY = 12 * 60 * 60;
 
 /**
+ * Check if Redis is available and connected
+ * @returns {boolean} - Whether Redis is available for operations
+ */
+function isRedisAvailable() {
+    return redis && redis.status === 'ready';
+}
+
+/**
  * Save room data to Redis
  * @param {string} roomCode - The room's unique code
  * @param {Object} roomData - Room data to save (without WebSocket connections)
  */
 async function saveRoom(roomCode, roomData) {
     // Skip if Redis is not available
-    if (!redis) {
+    if (!isRedisAvailable()) {
+        console.log(`[Redis] Skipping save for room ${roomCode} - Redis not available`);
         return true; // Silently succeed when running without Redis
     }
-    
+
     try {
         // Create a serializable version of room data (remove WS objects)
         const serializableRoom = {
@@ -48,11 +82,12 @@ async function saveRoom(roomCode, roomData) {
 
         // Save to Redis with expiration
         await redis.set(
-            `${ROOM_PREFIX}${roomCode}`, 
+            `${ROOM_PREFIX}${roomCode}`,
             JSON.stringify(serializableRoom),
-            { ex: ROOM_EXPIRY }
+            'EX', // Use EX instead of object syntax for better compatibility
+            ROOM_EXPIRY
         );
-        
+
         console.log(`[Redis] Saved room ${roomCode} to Redis`);
         return true;
     } catch (error) {
@@ -68,10 +103,10 @@ async function saveRoom(roomCode, roomData) {
  */
 async function roomExists(roomCode) {
     // Skip if Redis is not available
-    if (!redis) {
+    if (!isRedisAvailable()) {
         return false; // Assume room doesn't exist in Redis when Redis is unavailable
     }
-    
+
     try {
         const exists = await redis.exists(`${ROOM_PREFIX}${roomCode}`);
         return !!exists;
@@ -88,14 +123,14 @@ async function roomExists(roomCode) {
  */
 async function getRoom(roomCode) {
     // Skip if Redis is not available
-    if (!redis) {
+    if (!isRedisAvailable()) {
         return null; // Return null when Redis is unavailable
     }
-    
+
     try {
         const data = await redis.get(`${ROOM_PREFIX}${roomCode}`);
         if (!data) return null;
-        
+
         return JSON.parse(data);
     } catch (error) {
         console.error(`[Redis] Error getting room ${roomCode}:`, error);
@@ -109,10 +144,10 @@ async function getRoom(roomCode) {
  */
 async function deleteRoom(roomCode) {
     // Skip if Redis is not available
-    if (!redis) {
+    if (!isRedisAvailable()) {
         return true; // Silently succeed when running without Redis
     }
-    
+
     try {
         await redis.del(`${ROOM_PREFIX}${roomCode}`);
         console.log(`[Redis] Deleted room ${roomCode} from Redis`);
@@ -130,23 +165,24 @@ async function deleteRoom(roomCode) {
  */
 async function updateTranscript(roomCode, transcript) {
     // Skip if Redis is not available
-    if (!redis) {
+    if (!isRedisAvailable()) {
         return true; // Silently succeed when running without Redis
     }
-    
+
     try {
         const roomData = await getRoom(roomCode);
         if (!roomData) return false;
-        
+
         roomData.transcript = transcript;
         roomData.lastActivity = Date.now();
-        
+
         await redis.set(
-            `${ROOM_PREFIX}${roomCode}`, 
+            `${ROOM_PREFIX}${roomCode}`,
             JSON.stringify(roomData),
-            { ex: ROOM_EXPIRY }
+            'EX', // Use EX instead of object syntax for better compatibility
+            ROOM_EXPIRY
         );
-        
+
         return true;
     } catch (error) {
         console.error(`[Redis] Error updating transcript for room ${roomCode}:`, error);
@@ -160,10 +196,10 @@ async function updateTranscript(roomCode, transcript) {
  */
 async function getAllRooms() {
     // Skip if Redis is not available
-    if (!redis) {
+    if (!isRedisAvailable()) {
         return []; // Return empty array when Redis is unavailable
     }
-    
+
     try {
         const keys = await redis.keys(`${ROOM_PREFIX}*`);
         return keys.map(key => key.replace(ROOM_PREFIX, ''));
@@ -179,5 +215,6 @@ module.exports = {
     getRoom,
     deleteRoom,
     updateTranscript,
-    getAllRooms
+    getAllRooms,
+    isRedisAvailable // Export for debugging/monitoring
 };
